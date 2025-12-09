@@ -20,11 +20,11 @@ public class AgentMain {
         System.out.println("========================================");
 
         new AgentBuilder.Default()
-                // 匹配所有 Controller 类
+                // 匹配所有 Controller 类，且必须在指定包路径下
                 .type(ElementMatchers.isAnnotatedWith(
                         ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
                                 .or(ElementMatchers.named("org.springframework.stereotype.Controller"))
-                ))
+                ).and(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller.fish")))
                 // 匹配所有 public 方法
                 .transform((builder, type, classLoader, module, protectionDomain) ->
                         builder.method(ElementMatchers.isPublic()
