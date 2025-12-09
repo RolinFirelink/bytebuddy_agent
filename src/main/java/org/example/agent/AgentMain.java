@@ -5,8 +5,13 @@ import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.instrument.Instrumentation;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class AgentMain {
+
+    private static ScheduledExecutorService heartbeatExecutor;
 
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println("========================================");
@@ -34,9 +39,97 @@ public class AgentMain {
                                 .intercept(MethodDelegation.to(org.example.agent.interceptor.ControllerInterceptor.class))
                 )
                 .installOn(inst);
+        startHeartbeat(agentArgs);
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
         premain(agentArgs, inst);
+    }
+
+    private static void startHeartbeat(String agentArgs) {
+        // 创建单线程调度器（守护线程）
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "Agent-Heartbeat-Thread");
+            t.setDaemon(true); // 设置为守护线程，避免阻止JVM退出
+            return t;
+        });
+
+        // 解析心跳间隔（默认30秒）
+        long interval = 30;
+        String heartbeatUrl = null;
+
+        if (agentArgs != null) {
+            // 解析参数，例如: heartbeatInterval=10&heartbeatUrl=http://monitor:8080/heartbeat
+            String[] pairs = agentArgs.split("&");
+            for (String pair : pairs) {
+                String[] kv = pair.split("=");
+                if (kv.length == 2) {
+                    if ("heartbeatInterval".equals(kv[0])) {
+                        interval = Long.parseLong(kv[1]);
+                    } else if ("heartbeatUrl".equals(kv[0])) {
+                        heartbeatUrl = kv[1];
+                    }
+                }
+            }
+        }
+
+        final String url = heartbeatUrl;
+        final long finalInterval = interval;
+
+        // 启动定时心跳任务
+        heartbeatExecutor.scheduleAtFixedRate(() -> {
+            try {
+                long timestamp = System.currentTimeMillis();
+                String hostname = System.getProperty("user.name", "unknown");
+                String javaVersion = System.getProperty("java.version");
+
+                System.out.println("[Agent-Heartbeat] " + timestamp +
+                        " | Host: " + hostname +
+                        " | Java: " + javaVersion +
+                        " | Status: ALIVE");
+
+                // 如果配置了URL，发送HTTP心跳
+                if (url != null && !url.isEmpty()) {
+                    sendHeartbeat(url, timestamp, hostname, javaVersion);
+                }
+            } catch (Exception e) {
+                // 心跳失败不影响主应用
+                System.err.println("[Agent-Heartbeat] 心跳发送失败: " + e.getMessage());
+            }
+        }, 5, finalInterval, TimeUnit.SECONDS); // 延迟5秒启动，然后每interval秒执行一次
+
+        System.out.println("[Agent] 心跳机制已启动，间隔: " + finalInterval + "秒");
+    }
+
+    private static void sendHeartbeat(String url, long timestamp, String hostname, String javaVersion) {
+        try {
+            // 使用简单的HTTP连接发送心跳
+            java.net.URL heartbeatUrl = new java.net.URL(url);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) heartbeatUrl.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            conn.setDoOutput(true);
+
+            // 构建心跳数据
+            String json = String.format(
+                    "{\"timestamp\":%d,\"hostname\":\"%s\",\"javaVersion\":\"%s\",\"agent\":\"bytebuddy_agent\"}",
+                    timestamp, hostname, javaVersion
+            );
+
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes("UTF-8"));
+            }
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode >= 200 && responseCode < 300) {
+                System.out.println("[Agent-Heartbeat] 心跳发送成功: " + responseCode);
+            } else {
+                System.out.println("[Agent-Heartbeat] 心跳发送失败: " + responseCode);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("发送心跳失败", e);
+        }
     }
 }
