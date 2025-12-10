@@ -3,6 +3,7 @@ package org.example.agent;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
+import org.example.agent.listener.ClassLoadListener;
 
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.Executors;
@@ -25,6 +26,8 @@ public class AgentMain {
         System.out.println("========================================");
 
         new AgentBuilder.Default()
+                // 添加类加载监听器
+                .with(new ClassLoadListener())
                 // 匹配所有 Controller 类，但排除指定包路径
                 .type(ElementMatchers.isAnnotatedWith(
                         ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
