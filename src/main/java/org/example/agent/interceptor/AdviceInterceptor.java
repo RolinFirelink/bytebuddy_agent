@@ -7,6 +7,7 @@ import net.bytebuddy.asm.Advice;
  * Advice是ByteBuddy中性能更好的拦截方式，比MethodDelegation更轻量
  * 
  * 注意：Advice使用静态方法，方法名可以是任意的
+ * Advice很难做到对返回值的通用处理,但是他的性能更高,而MethodDelegation则可以做到通用处理,但相应的它的效率更低
  */
 public class AdviceInterceptor {
 
@@ -41,15 +42,14 @@ public class AdviceInterceptor {
 
     /**
      * 方法退出时调用（正常返回或异常都会调用）
+     * 注意：不使用 @Advice.Return 避免类型转换问题（如泛型、void、byte[]等）
      * @param methodName 方法名
-     * @param returnValue 返回值（如果有）
      * @param throwable 异常（如果有）
      * @param enterTime 进入时间（通过@Advice.Enter注入）
      */
     @Advice.OnMethodExit(onThrowable = Throwable.class)
     public static void onExit(
             @Advice.Origin("#m") String methodName,
-            @Advice.Return(readOnly = false) Object returnValue,
             @Advice.Thrown Throwable throwable,
             @Advice.Enter long enterTime) {
         
@@ -61,15 +61,7 @@ public class AdviceInterceptor {
             System.out.println("[Advice] 异常信息: " + throwable.getMessage());
         } else {
             System.out.println("[Advice] 方法正常退出: " + methodName);
-            if (returnValue != null) {
-                String resultStr = returnValue.toString();
-                if (resultStr.length() > 100) {
-                    resultStr = resultStr.substring(0, 100) + "...";
-                }
-                System.out.println("[Advice] 返回值: " + resultStr);
-            } else {
-                System.out.println("[Advice] 返回值: null");
-            }
+            // 不再读取返回值，避免类型转换问题
         }
         
         System.out.println("[Advice] 执行耗时: " + duration + "ms");

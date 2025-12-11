@@ -10,9 +10,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 使用普通拦截器
+ * 使用高级拦截器
  */
-public class AgentMain {
+public class AgentMain2 {
 
     private static ScheduledExecutorService heartbeatExecutor;
 
@@ -42,7 +42,7 @@ public class AgentMain {
                                         .and(ElementMatchers.not(ElementMatchers.isConstructor()))
                                 )
                                 // 使用 MethodDelegation 将拦截到的方法调用委托给指定的类,该类会拦截指定的方法并在方法前后执行代码
-                                .intercept(MethodDelegation.to(org.example.agent.interceptor.ControllerInterceptor.class))
+                                .intercept(MethodDelegation.to(org.example.agent.interceptor.AdvancedInterceptor.class))
                 )
                 .installOn(inst);
 

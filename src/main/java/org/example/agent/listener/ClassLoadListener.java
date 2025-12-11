@@ -9,7 +9,7 @@ import java.io.PrintStream;
 
 /**
  * 类加载监听器
- * 监听类的加载、转换、错误等事件
+ * 监听类的加载、转换、错误等事件,主要关注类转换过程中的数据输出
  */
 public class ClassLoadListener implements AgentBuilder.Listener {
 

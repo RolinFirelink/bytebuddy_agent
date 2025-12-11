@@ -1,16 +1,16 @@
 package org.example.agent.interceptor;
 
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.SuperCall;
-import net.bytebuddy.implementation.bind.annotation.AllArguments;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 /**
- * 高级拦截器示例
- * 捕获更多信息：线程信息、调用栈、类加载器、方法签名等
+ * MethodDelegation高级拦截器示例
+ * 捕获更多信息：线程信息、调用栈、类加载器、方法签名等,本质使用的是MethodDelegation
  */
 public class AdvancedInterceptor {
 

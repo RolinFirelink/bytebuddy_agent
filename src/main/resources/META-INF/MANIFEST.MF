@@ -1,4 +1,5 @@
 Manifest-Version: 1.0
+# 指定 Java Agent 的入口类,如果想要更换premain类,除了这里还需要在pom文件中也需要做相应修改
 Premain-Class: org.example.agent.AgentMain
 Can-Redefine-Classes: true
 Can-Retransform-Classes: true

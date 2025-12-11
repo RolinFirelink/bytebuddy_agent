@@ -1,22 +1,21 @@
 package org.example.agent;
 
 import net.bytebuddy.agent.builder.AgentBuilder;
-import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.asm.Advice;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.utility.JavaModule;
 
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 使用普通拦截器
- */
-public class AgentMain {
+public class AgentMain3 {
 
     private static ScheduledExecutorService heartbeatExecutor;
 
-    //  premain 方法 会在探针被启动时就被调用
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println("========================================");
         System.out.println("ByteBuddy Agent 已启动！");
@@ -29,25 +28,63 @@ public class AgentMain {
         System.out.println("========================================");
 
         new AgentBuilder.Default()
-                // 匹配所有 Controller 类，但排除指定包路径。
-                // todo 要注意在你的使用的项目,下面的匹配规则要做适配修改
-                .type(ElementMatchers.isAnnotatedWith(
-                        ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
-                                .or(ElementMatchers.named("org.springframework.stereotype.Controller"))
-                ).and(ElementMatchers.not(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller.fish"))))
-                // 匹配所有 public 方法
-                .transform((builder, type, classLoader, module, protectionDomain) ->
-                        builder.method(ElementMatchers.isPublic()
-                                        .and(ElementMatchers.not(ElementMatchers.isStatic()))
-                                        .and(ElementMatchers.not(ElementMatchers.isConstructor()))
-                                )
-                                // 使用 MethodDelegation 将拦截到的方法调用委托给指定的类,该类会拦截指定的方法并在方法前后执行代码
-                                .intercept(MethodDelegation.to(org.example.agent.interceptor.ControllerInterceptor.class))
-                )
+                // 添加类型匹配监听器，用于调试和日志输出
+                .with(AgentBuilder.Listener.StreamWriting.toSystemOut().withTransformationsOnly())
+                // todo 添加错误处理：即使某个类增强失败，也不影响其他类,防止Advice拦截器因为无法处理特定的返回类型而启动失败
+                // todo 由于Advice处理多种类型需要写的代码较多，因此这里采用本方式暂且完成示例
+                .with(new AgentBuilder.Listener.Filtering(
+                        ElementMatchers.any(),
+                        new AgentBuilder.Listener() {
+                            @Override
+                            public void onDiscovery(String typeName, ClassLoader classLoader, JavaModule module, boolean loaded) {
+                                // 发现类，不需要处理
+                            }
+
+                            @Override
+                            public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader, JavaModule module, boolean loaded, DynamicType dynamicType) {
+                                // 转换成功，不需要处理
+                            }
+
+                            @Override
+                            public void onIgnored(TypeDescription typeDescription, ClassLoader classLoader, JavaModule module, boolean loaded) {
+                                // 类被忽略，不需要处理
+                            }
+
+                            @Override
+                            public void onError(String typeName, ClassLoader classLoader, JavaModule module, boolean loaded, Throwable throwable) {
+                                System.err.println("[Agent] 警告: 类 " + typeName + " 增强失败，跳过该类: " + throwable.getMessage());
+                                // 不重新抛出异常，允许其他类继续增强
+                            }
+
+                            @Override
+                            public void onComplete(String typeName, ClassLoader classLoader, JavaModule module, boolean loaded) {
+                                // 完成，不需要处理
+                            }
+                        }))
+                // 只匹配指定包下的 Controller 类，排除 fish 子包
+                // 限制范围：只增强 com.rolin.orangesmart.controller 包下的类（排除 fish 子包）
+                .type(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller")
+                        .and(ElementMatchers.not(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller.fish")))
+                        .and(ElementMatchers.isAnnotatedWith(
+                                ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
+                                        .or(ElementMatchers.named("org.springframework.stereotype.Controller"))
+                        )))
+                // 添加调试信息：当类被匹配到时打印日志，并使用 Advice 进行增强
+                .transform((builder, type, classLoader, module, protectionDomain) -> {
+                    System.out.println("[Agent] ========== 匹配到类 ==========");
+                    System.out.println("[Agent] 类名: " + type.getName());
+                    System.out.println("[Agent] 类加载器: " + (classLoader != null ? classLoader.getClass().getName() : "null"));
+                    System.out.println("[Agent] 开始增强该类的方法...");
+
+                    // 在类级别使用 visit 方式应用 Advice，这是推荐的方式
+                    return builder.visit(Advice.to(org.example.agent.interceptor.AdviceInterceptor.class)
+                            .on(ElementMatchers.isPublic()
+                                    .and(ElementMatchers.not(ElementMatchers.isStatic()))
+                                    .and(ElementMatchers.not(ElementMatchers.isConstructor()))));
+                })
                 .installOn(inst);
 
-        // 启动探针心跳机制，默认每30秒发送一次心跳
-        startHeartbeat(agentArgs);
+        System.out.println("[Agent] Agent 配置完成，等待类加载...");
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
