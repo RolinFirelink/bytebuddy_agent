@@ -7,7 +7,7 @@ import net.bytebuddy.asm.Advice;
  * Advice是ByteBuddy中性能更好的拦截方式，比MethodDelegation更轻量
  * 
  * 注意：Advice使用静态方法，方法名可以是任意的
- * Advice很难做到对返回值的通用处理,但是他的性能更高,而MethodDelegation则可以做到通用处理,但相应的他的效率更低
+ * Advice很难做到对返回值的通用处理,但是他的性能更高,而MethodDelegation则可以做到通用处理,但相应的它的效率更低
  */
 public class AdviceInterceptor {
 

@@ -9,8 +9,8 @@ import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 /**
- * 高级拦截器示例
- * 捕获更多信息：线程信息、调用栈、类加载器、方法签名等
+ * MethodDelegation高级拦截器示例
+ * 捕获更多信息：线程信息、调用栈、类加载器、方法签名等,本质使用的是MethodDelegation
  */
 public class AdvancedInterceptor {
 

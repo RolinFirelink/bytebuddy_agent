@@ -8,6 +8,11 @@ import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
+/**
+ * MethodDelegation普通拦截器示例
+ * 会在方法运行时拦截并记录方法调用信息
+ * 包括方法名、参数、执行时间、返回值等详细信息
+ */
 public class ControllerInterceptor {
 
     @RuntimeType

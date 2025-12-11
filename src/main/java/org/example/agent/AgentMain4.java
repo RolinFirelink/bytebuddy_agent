@@ -3,6 +3,7 @@ package org.example.agent;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
+import org.example.agent.listener.ClassLoadListener;
 
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.Executors;
@@ -10,9 +11,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 使用普通拦截器
+ * 使用类加载监听器,监听器可以和拦截器配合使用
  */
-public class AgentMain {
+public class AgentMain4 {
 
     private static ScheduledExecutorService heartbeatExecutor;
 
@@ -29,21 +30,23 @@ public class AgentMain {
         System.out.println("========================================");
 
         new AgentBuilder.Default()
-                // 匹配所有 Controller 类，但排除指定包路径。
-                // todo 要注意在你的使用的项目,下面的匹配规则要做适配修改
-                .type(ElementMatchers.isAnnotatedWith(
-                        ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
-                                .or(ElementMatchers.named("org.springframework.stereotype.Controller"))
-                ).and(ElementMatchers.not(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller.fish"))))
-                // 匹配所有 public 方法
-                .transform((builder, type, classLoader, module, protectionDomain) ->
-                        builder.method(ElementMatchers.isPublic()
-                                        .and(ElementMatchers.not(ElementMatchers.isStatic()))
-                                        .and(ElementMatchers.not(ElementMatchers.isConstructor()))
-                                )
-                                // 使用 MethodDelegation 将拦截到的方法调用委托给指定的类,该类会拦截指定的方法并在方法前后执行代码
-                                .intercept(MethodDelegation.to(org.example.agent.interceptor.ControllerInterceptor.class))
-                )
+                // 只使用类加载监听器
+                .with(new ClassLoadListener())
+//                // 匹配所有 Controller 类，但排除指定包路径。
+//                // todo 要注意在你的使用的项目,下面的匹配规则要做适配修改
+//                .type(ElementMatchers.isAnnotatedWith(
+//                        ElementMatchers.named("org.springframework.web.bind.annotation.RestController")
+//                                .or(ElementMatchers.named("org.springframework.stereotype.Controller"))
+//                ).and(ElementMatchers.not(ElementMatchers.nameStartsWith("com.rolin.orangesmart.controller.fish"))))
+//                // 匹配所有 public 方法
+//                .transform((builder, type, classLoader, module, protectionDomain) ->
+//                        builder.method(ElementMatchers.isPublic()
+//                                        .and(ElementMatchers.not(ElementMatchers.isStatic()))
+//                                        .and(ElementMatchers.not(ElementMatchers.isConstructor()))
+//                                )
+//                                // 使用 MethodDelegation 将拦截到的方法调用委托给指定的类,该类会拦截指定的方法并在方法前后执行代码
+//                                .intercept(MethodDelegation.to(org.example.agent.interceptor.ControllerInterceptor.class))
+//                )
                 .installOn(inst);
 
         // 启动探针心跳机制，默认每30秒发送一次心跳
