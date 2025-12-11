@@ -2,6 +2,8 @@
 
 **建议使用 JDK 21**
 
+本项目是一个 Java Agent 探针，用于在运行时对目标应用进行字节码增强。探针需要随目标应用一起启动，通过 JVM 的 `-javaagent` 参数加载。
+
 本项目演示 ByteBuddy Agent 的核心功能，包括 MethodDelegation、Advice、Listener 等常用模式。
 
 ## 快速开始
@@ -11,10 +13,41 @@
 mvn clean package
 ```
 
+构建完成后，探针 jar 位于 `target/bytebuddy_agent-1.0-SNAPSHOT.jar`
+
 ### 使用
+
+#### 命令行启动
 ```bash
-java -javaagent:target/bytebuddy_agent-1.0-SNAPSHOT.jar=heartbeatInterval=30&heartbeatUrl=http://monitor:8080/heartbeat your-app.jar
+java -javaagent:/path/to/bytebuddy_agent-1.0-SNAPSHOT.jar=heartbeatInterval=30&heartbeatUrl=http://monitor:8080/heartbeat -jar /path/to/your-app.jar
 ```
+
+**参数说明：**
+- `/path/to/bytebuddy_agent-1.0-SNAPSHOT.jar` - 探针 jar 包的绝对路径
+- `/path/to/your-app.jar` - 目标应用的 jar 包路径
+- `heartbeatInterval=30&heartbeatUrl=...` - 探针参数（可选）
+
+#### IDEA VM Options 启动
+在 IDEA 的 Run Configuration 中，VM options 填写：
+```
+-javaagent:/path/to/bytebuddy_agent-1.0-SNAPSHOT.jar
+```
+
+**注意：** 使用 VM options 时只需填写 `-javaagent` 部分，不需要 `java` 命令，同时要确保你在目标项目中填写上面的命令。
+
+### 切换 AgentMain
+
+如需使用不同的 AgentMain（如 AgentMain2、AgentMain3、AgentMain4），需要：
+
+1. **修改 `pom.xml`** 中的 `Premain-Class`（第 63 行）：
+   ```xml
+   <Premain-Class>org.example.agent.AgentMain2</Premain-Class>
+   ```
+
+2. **重新编译**：
+   ```bash
+   mvn clean package
+   ```
 
 ## 示例说明
 
